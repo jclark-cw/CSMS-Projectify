@@ -1,0 +1,5 @@
+# DocuSign JWT-grant auth (live auto-trigger only). The offline scaffold/tests
+# don't need these — install when wiring DocuSign for real.
+-r requirements.txt
+PyJWT>=2,<3
+cryptography>=42   # RS256 signing for the JWT assertion

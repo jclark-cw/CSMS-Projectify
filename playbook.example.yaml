@@ -1,0 +1,54 @@
+# playbook.example.yaml — standard rules layered onto every parsed contract.
+# Copy to playbook.yaml (git-ignored) and edit. Use with:
+#   python3 -m csms build <contract>.pdf --playbook playbook.yaml --signed-date 2026-01-15
+#
+# Due dates anchor to "signed" (contract signing date) or "event" (a deliverable/
+# event date — optional; omit --event-date and event-anchored dates are skipped).
+# offset_days may be negative (e.g. -90 = 90 days before the anchor).
+
+# 1) DEFAULT TASKS — added to every project, before the parsed deliverables.
+default_sections:
+  - name: "Kickoff & Onboarding"
+    tasks:
+      - name: "Verify contract / project details"
+        notes: "Confirm the parsed sections/tasks match the signed contract before work begins."
+        # assignee: "ops@example.com"
+        due: { anchor: signed, offset_days: 1 }
+      - name: "Send welcome email to sponsor"
+        notes: "Intro, main point of contact, what happens next."
+        assignee: "dana@example.com"
+        due: { anchor: signed, offset_days: 2 }
+      - name: "Add sponsor to CRM"
+        assignee: "ops@example.com"
+        due: { anchor: signed, offset_days: 3 }
+      - name: "Schedule kickoff call"
+        assignee: "dana@example.com"
+        due: { anchor: signed, offset_days: 7 }
+      - name: "Collect logo and brand assets"
+        assignee: "design@example.com"
+        due: { anchor: signed, offset_days: 10 }
+
+# 2) ASSIGNMENTS.
+assignees:
+  # auto-assigns the default_sections (kickoff) tasks above that don't name
+  # someone themselves. Separate from `default`, which covers contract tasks.
+  # May also be "me" (whoever owns the connected Asana token).
+  kickoff: "ops@example.com"
+  # fallback for the PARSED (contract) tasks
+  default: "ops@example.com"
+  by_section:
+    "Speaking and Presentation Opportunities": "dana@example.com"
+    "Booth and Expo Benefits": "events@example.com"
+    "Media and Content": "content@example.com"
+
+# 3) DUE DATES for the PARSED tasks (cascade within each section).
+due_dates:
+  # fallback rule for any section not listed below
+  default: { anchor: signed, offset_days: 30 }
+  # each successive task in a section adds this many days (the "waterfall")
+  cascade_days: 7
+  by_section:
+    "Speaking and Presentation Opportunities": { anchor: signed, offset_days: 14 }
+    "Booth and Expo Benefits": { anchor: signed, offset_days: 21 }
+    # Example of an event-anchored rule (only applies if --event-date is given):
+    # "Media and Content": { anchor: event, offset_days: -45 }

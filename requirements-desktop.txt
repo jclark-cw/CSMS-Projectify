@@ -1,0 +1,5 @@
+# Local desktop app (csms.desktop). Pulls a native webview backend per-OS
+# (pyobjc on macOS, edgewebview2 on Windows, GTK/Qt on Linux).
+-r requirements.txt
+pywebview>=5,<7
+keyring>=24,<26

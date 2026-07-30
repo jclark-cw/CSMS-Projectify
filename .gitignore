@@ -1,0 +1,38 @@
+# Secrets — never commit
+.env
+*.pem
+*.key
+
+# Real playbook (has internal assignee emails); the .example is committed
+playbook.yaml
+playbook.json
+
+# Signed contracts & exported PII (keep out of version control)
+*.pdf
+*.zip
+CW Contracts/
+CMC26_Zapier_Table.csv
+CMC26_Bill_of_Materials.pdf
+
+# Key backups (the real .pem is already ignored above; this is a manual backup copy)
+Private KEy Backup.rtf
+*Key Backup*
+
+# ...but DO keep the synthetic sample contracts (fake data, safe to share)
+!samples/
+!samples/*.pdf
+
+# Local state (idempotency / processed-envelope tracking)
+state/
+*.state.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# OS
+.DS_Store

@@ -1,0 +1,8 @@
+# Runtime dependencies (pinned). Audit with: pip-audit -r requirements.txt
+pdfplumber==0.11.8
+
+# Web UI / API (csms.webapp). Pure-Python, cross-platform.
+Flask==3.0.3
+
+# Playbook config (YAML). Optional at runtime — JSON playbooks need no extra dep.
+PyYAML>=6,<7
