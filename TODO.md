@@ -39,8 +39,15 @@ for now, so code-signing is NOT a blocker to ship. Need **both a Mac and a PC bu
   unaffected (still `.env`-based). Tests: tests/test_credentials.py,
   tests/test_webapp.py wizard tests, tests/test_asana.py list_workspaces/list_teams.
 - [x] Playbook config is now a wizard, not hand-edited YAML (see Playbook section above).
-- [ ] **PyInstaller freeze — Mac build** (.app + .dmg).
-- [ ] **PyInstaller freeze — PC build** (.exe + Inno Setup/NSIS installer).
+- [x] **PyInstaller freeze — Mac build** (2026-07-30): `packaging/launcher.py` +
+  `.github/workflows/build-desktop.yml` (macos-latest job). Validated locally in an
+  isolated venv (not the dev environment) — frozen `.app` launches clean with no
+  missing-module errors. Produces both a zipped `.app` and a `.dmg` as CI artifacts.
+- [ ] **PyInstaller freeze — PC build**: workflow file written (windows-latest job,
+  same launcher) but **not yet run/validated** — no Windows machine available this
+  session. First CI run on this repo is the real test; pywebview's Windows backend
+  (EdgeWebView2/pythonnet) may need extra hidden-import tweaks if PyInstaller misses
+  them. Installer wrapping (Inno Setup/NSIS) still TODO after the raw .exe works.
 - [ ] Clean-machine test both builds (no Python installed).
 - [ ] Code-signing: deferred/skipped per client's explicit go-ahead — revisit if it
   becomes a problem for them (Apple Developer ID ~$99/yr, Windows Authenticode ~$100–400/yr).

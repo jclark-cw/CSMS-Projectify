@@ -1,0 +1,75 @@
+name: Build Desktop App
+
+# Manual trigger, plus building automatically on version tags (v1.0.0 etc).
+# Mac and Windows must each be built on their own OS -- PyInstaller freezes
+# whatever platform it runs on, it cannot cross-compile.
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-desktop.txt pyinstaller
+
+      - name: Freeze with PyInstaller
+        run: |
+          pyinstaller --noconfirm --windowed --name Projectify \
+            --paths . packaging/launcher.py
+
+      - name: Zip the .app (preserves bundle structure/permissions)
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            dist/Projectify.app dist/Projectify-mac.zip
+
+      - name: Build .dmg
+        run: |
+          hdiutil create -volname Projectify -srcfolder dist/Projectify.app \
+            -ov -format UDZO dist/Projectify-mac.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectify-mac
+          path: |
+            dist/Projectify-mac.zip
+            dist/Projectify-mac.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-desktop.txt pyinstaller
+
+      - name: Freeze with PyInstaller
+        run: |
+          pyinstaller --noconfirm --windowed --name Projectify `
+            --paths . packaging/launcher.py
+
+      - name: Zip the dist folder
+        run: |
+          Compress-Archive -Path dist/Projectify/* -DestinationPath dist/Projectify-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectify-windows
+          path: dist/Projectify-windows.zip
