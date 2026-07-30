@@ -562,9 +562,8 @@ PAGE = """<!doctype html>
     if (!MEMBERS.length){
       return '<input type="text" class="t-assignee" value="'+esc(value||'')+'" placeholder="email">';
     }
-    var opts = '<option value="">(unassigned)</option>'
-      + '<option value="me"'+(value === 'me' ? ' selected' : '')+'>Me</option>';
-    var matched = (value === 'me');
+    var opts = '<option value="">(unassigned)</option>';
+    var matched = false;
     MEMBERS.forEach(function(m){
       var sel = (value && (value === m.gid || value === m.email)) ? ' selected' : '';
       if (sel) matched = true;
@@ -943,10 +942,8 @@ PLAYBOOK_PAGE = """<!doctype html>
     if (!USERS.length){
       return '<input type="email" '+attrs+' value="'+esc(value)+'" placeholder="optional">';
     }
-    var opts = '<option value="">(unassigned)</option>'
-      // Asana resolves "me" to whoever owns the connected token.
-      + '<option value="me"'+(value === 'me' ? ' selected' : '')+'>Me (this Asana account)</option>';
-    var matched = (value === 'me');
+    var opts = '<option value="">(unassigned)</option>';
+    var matched = false;
     USERS.forEach(function(u){
       var sel = (value && (value === u.gid || value === u.email)) ? ' selected' : '';
       if (sel) matched = true;
