@@ -45,7 +45,7 @@ jobs:
           hdiutil create -volname Projectify -srcfolder dist/Projectify.app \
             -ov -format UDZO dist/Projectify-mac.dmg
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: projectify-mac
           path: |
@@ -89,7 +89,7 @@ jobs:
         run: |
           Compress-Archive -Path dist/Projectify -DestinationPath dist/Projectify-windows.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: projectify-windows
           path: dist/Projectify-windows.zip
