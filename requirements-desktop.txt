@@ -1,5 +1,10 @@
 # Local desktop app (csms.desktop). Pulls a native webview backend per-OS
 # (pyobjc on macOS, edgewebview2 on Windows, GTK/Qt on Linux).
+#
+# Pinned rather than ranged: these two go inside the frozen binary handed to a
+# client, so the build needs to be reproducible -- a range means two builds of the
+# same commit can ship different code. Bump deliberately, then re-run the
+# packaging workflow's selftest.
 -r requirements.txt
-pywebview>=5,<7
-keyring>=24,<26
+pywebview==6.2.1
+keyring==25.7.0

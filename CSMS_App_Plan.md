@@ -27,9 +27,9 @@ Two delivery modes, same engine underneath:
 ## Principles
 
 - **Portable by default.** Pure-Python deps, `pathlib` (no hardcoded absolute paths),
-  Python 3.9+ syntax, secrets via env/`.env`. The engine and app run on macOS / Linux /
-  Windows; only the automation triggers are OS-specific and stay as thin, swappable
-  adapters (watchdog folder-watch; launchd/cron/Task Scheduler per platform).
+  Python 3.10+ syntax, secrets via env/`.env`. *(Floor raised from 3.9 on 2026-08-10:
+  the pdfminer.six release fixing PYSEC-2026-1761 requires 3.10, and that library
+  parses the untrusted contract.)* The engine and app run on macOS / Linux / Windows.
 - **Consistent input.** Contract templates should follow the formatting standard
   (see `CONTRACT_FORMATTING.md`) so parsing leans on portable glyph+bold signals, not
   brittle font heuristics. Not enforced — the editable preview is the safety net.

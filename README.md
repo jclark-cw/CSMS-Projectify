@@ -32,6 +32,10 @@ parse_contract.py  # thin back-compat shim → csms.cli (defaults to `parse`)
 
 ## Use
 
+Needs **Python 3.10+**. The floor comes from pdfminer.six: the release fixing
+PYSEC-2026-1761 dropped 3.9, and that library parses the untrusted contract PDF.
+CI builds on 3.11.
+
 ```bash
 python3 -m pip install -r requirements.txt          # runtime
 

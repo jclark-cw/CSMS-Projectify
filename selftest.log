@@ -1,0 +1,8 @@
+[ok] pdfminer cmap data files
+[ok] csms.parser imports
+[ok] keyring backend resolves
+[ok] flask app builds + serves /
+[ok] pywebview imports
+[ok] end-to-end parse of samples/sample_acme_grouped.pdf — 4 sections, 7 tasks
+
+6/6 checks passed

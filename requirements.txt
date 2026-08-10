@@ -1,8 +1,16 @@
 # Runtime dependencies (pinned). Audit with: pip-audit -r requirements.txt
-pdfplumber==0.11.8
+#
+# Requires Python >= 3.10. The floor is set by pdfminer.six: the release that
+# fixes PYSEC-2026-1761 dropped 3.9, and pdfminer is the code that parses the
+# untrusted contract PDF, so staying back was not an option. CI builds on 3.11.
+#
+# pdfplumber pins pdfminer.six exactly and constrains Pillow, so bumping it is
+# how the parsing stack gets patched -- don't pin pdfminer/Pillow separately here
+# or the two will fight.
+pdfplumber==0.11.10
 
 # Web UI / API (csms.webapp). Pure-Python, cross-platform.
-Flask==3.0.3
+Flask==3.1.3
 
 # Playbook config (YAML). Optional at runtime — JSON playbooks need no extra dep.
 PyYAML>=6,<7
