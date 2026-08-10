@@ -1,5 +1,5 @@
 # Development / test dependencies
 -r requirements.txt
 pytest>=8,<9
-pip-audit>=2.7
+pip-audit>=2.10.1
 reportlab>=4,<5   # tools/make_sample_contracts.py (synthetic fixtures only)
