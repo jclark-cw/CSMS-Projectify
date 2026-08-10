@@ -22,7 +22,7 @@ Private KEy Backup.rtf
 !samples/
 !samples/*.pdf
 
-# Local state (idempotency / processed-envelope tracking)
+# Local state / logs
 state/
 *.state.json
 

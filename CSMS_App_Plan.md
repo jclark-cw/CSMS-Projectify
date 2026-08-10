@@ -3,6 +3,13 @@
 Replace the Zapier flow with a self-owned Python system: **one core engine, many triggers.**
 Start with an operator-triggered upload app; bolt on full automation later with no rewrite.
 
+> **Status note (2026-08-10):** the DocuSign auto-trigger described below was built,
+> then **removed** at the client's request. The app does not connect to DocuSign or
+> any other e-signature service — the user exports the completed PDF and uploads it.
+> Sections describing the poll, envelope ids, JWT auth, and `state.py` are retained
+> as design history only; they no longer describe shipped code. Contract *parsing*
+> is unchanged.
+
 ---
 
 ## Goal
@@ -13,7 +20,7 @@ matching Asana project — sections and tasks built from the deliverables in the
 
 Two delivery modes, same engine underneath:
 - **App / "Projectify" button** (default): upload the signed PDF → preview → confirm → built.
-- **Full automation** (bolt-on): a scheduled DocuSign poll pulls signed contracts and builds them with nobody touching it.
+- ~~**Full automation** (bolt-on): a scheduled DocuSign poll pulls signed contracts and builds them with nobody touching it.~~ *(removed — see status note)*
 
 ---
 
@@ -130,7 +137,7 @@ auth (unattended) — credentials only, no inbound server.
 ## Offline behavior (answering directly)
 
 - **Offline:** PDF parsing and the full dry-run preview.
-- **Needs internet:** creating the Asana project/sections/tasks; pulling envelopes from DocuSign.
+- **Needs internet:** creating the Asana project/sections/tasks. That's the only outbound call.
 - **Resilience:** if the network drops mid-build, idempotency means a clean re-run when you're back — no half-built or duplicated projects.
 
 ---

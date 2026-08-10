@@ -17,7 +17,7 @@ from pathlib import Path
 from .parser import parse_contract, to_csv_rows, validate_pdf, InvalidPDFError
 from .engine import build_project, plan_to_dict, format_plan_text
 
-_SUBCOMMANDS = ("parse", "build", "poll")
+_SUBCOMMANDS = ("parse", "build")
 
 
 def _validate_or_exit(pdf: str) -> None:
@@ -91,50 +91,6 @@ def _cmd_build(args) -> None:
         print(format_plan_text(plan))
 
 
-def _cmd_poll(args) -> None:
-    """Run the DocuSign poll once, now — the manual/instant trigger (same code a
-    launchd/cron schedule calls). Builds projects for newly-completed envelopes."""
-    from datetime import date, timedelta
-    from .config import get
-    from .docusign import DocuSignClient, DocuSignError
-    from .poll import poll_once, build_from_pdf_bytes
-    from .state import ProcessedStore
-
-    since = args.since or (date.today() - timedelta(days=args.days)).isoformat()
-    folder = args.folder or get("DOCUSIGN_FOLDER_ID")
-
-    playbook = None
-    if args.playbook:
-        from .playbook import load_playbook
-        playbook = load_playbook(args.playbook)
-
-    try:
-        docusign = DocuSignClient.from_config()
-    except (RuntimeError, DocuSignError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        sys.exit(3)
-
-    def build(pdf_bytes, env):
-        name = env.get("emailSubject") or None
-        signed = (env.get("completedDateTime") or "")[:10] or None
-        return build_from_pdf_bytes(pdf_bytes, name, playbook=playbook,
-                                    signed_date=signed)
-
-    try:
-        results = poll_once(docusign, since, store=ProcessedStore(),
-                            folder_id=folder, build=build)
-    except (RuntimeError, DocuSignError) as e:
-        print(f"error: {e}", file=sys.stderr)
-        sys.exit(3)
-
-    if not results:
-        print(f"No new completed envelopes since {since}.")
-        return
-    print(f"Built {len(results)} project(s):")
-    for r in results:
-        print(f"  envelope {r['envelope_id']} → https://app.asana.com/0/{r['project_gid']}")
-
-
 def build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="csms", description="Contract → Asana automation")
     sub = ap.add_subparsers(dest="command")
@@ -165,17 +121,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p_build.add_argument("--event-date", dest="event_date", metavar="YYYY-MM-DD",
                          help="Deliverable/event date (for event-anchored due dates)")
     p_build.set_defaults(func=_cmd_build)
-
-    p_poll = sub.add_parser(
-        "poll", help="Run the DocuSign poll once now (manual/instant trigger)")
-    p_poll.add_argument("--since", metavar="YYYY-MM-DD",
-                        help="Only envelopes completed on/after this date (default: --days ago)")
-    p_poll.add_argument("--days", type=int, default=1,
-                        help="Look back this many days when --since is omitted (default: 1)")
-    p_poll.add_argument("--folder", help="DocuSign folder id (default: DOCUSIGN_FOLDER_ID)")
-    p_poll.add_argument("--playbook", metavar="FILE",
-                        help="Apply a playbook (signing date taken from each envelope)")
-    p_poll.set_defaults(func=_cmd_poll)
 
     return ap
 

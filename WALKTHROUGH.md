@@ -1,6 +1,6 @@
 # Projectify — review call run-book
 
-For walking an internal developer through the DocuSign → Asana tool.
+For walking an internal developer through the contract → Asana tool.
 Build status lives in `README.md`; deferred work in `TODO.md`.
 
 ---
@@ -38,7 +38,6 @@ Prefix live test projects with `[TEST]` so they're easy to find and delete after
 4. **Default tasks & due dates** (`/playbook`) — kickoff tasks, auto-assign,
    per-section exceptions, waterfall due dates off the signing date.
 5. **Change Asana connection** → the first-run wizard a client would see on install.
-6. Optionally: `python3 -m csms poll` — the hands-off DocuSign path.
 
 ---
 
@@ -57,16 +56,19 @@ contract PDF
 ```
 
 Entry points: `cli.py` · `webapp.py` (Flask UI + JSON API) · `desktop.py`
-(PyWebview around the same Flask app) · `poll.py` (DocuSign auto-trigger).
+(PyWebview around the same Flask app).
 
 Worth knowing:
-- **No SDKs.** Asana and DocuSign clients are stdlib `urllib`, with an injectable
+- **The contract PDF always comes from the user.** It's typically signed in
+  DocuSign, but the app never talks to DocuSign — the user exports the completed
+  PDF and drops it in. Nothing here holds e-signature credentials.
+- **No SDKs.** The Asana client is stdlib `urllib`, with an injectable
   `transport`, which is why the whole orchestration is unit-tested offline.
 - **The parser is the risky part.** It reads bold/glyph/font cues, so it's
   sensitive to contract formatting — see `CONTRACT_FORMATTING.md`. The editable
   preview is the permanent safety net, deliberately not a temporary one.
-- **Idempotency is by project name** for the manual flow, and by **DocuSign
-  envelope id** (`state/processed_envelopes.json`) for the auto flow.
+- **Idempotency is by project name** — re-running the same contract skips rather
+  than duplicating, with an explicit "create another anyway" escape hatch.
 
 ---
 
@@ -77,9 +79,8 @@ Worth knowing:
 - Secrets are never in the bundle: desktop uses the OS keychain via `keyring`,
   hosted uses `.env` (git-ignored, `chmod 600`). `csms/config.py` is the single
   read point and never logs values.
-- DocuSign auth is JWT grant, **outbound polling only** — no public inbound
-  endpoint to defend. A Connect webhook would need one; polling was chosen partly
-  to avoid that.
+- **Asana is the only outbound integration.** No e-signature credentials, no
+  inbound endpoint, nothing to poll — the contract arrives as a user-supplied file.
 - No remote fonts/CDN/analytics in the UI — nothing phones home on launch.
 - `validate_pdf()` enforces magic-byte + size limits (25 MB) before parsing.
 
@@ -93,15 +94,13 @@ Worth knowing:
 2. **A build that fails partway leaves a partial project.** A re-run then sees the
    name and skips, silently leaving it incomplete; `--force` makes a full duplicate
    rather than resuming. No resume/repair path exists yet.
-3. **Not packaged.** Mac and PC builds (PyInstaller + installers) aren't started.
-   Code signing is deliberately deferred — the client accepted the unsigned-app
-   warning.
-4. **DocuSign is sandbox-only.** Proven end-to-end in demo; production needs the
-   Integration Key promoted and `.env` swapped. Nothing is scheduled — no
-   launchd/cron is installed, so the auto-trigger only runs when invoked by hand.
-5. **Playbook is empty until someone fills it in.** The wizard exists; the real
+3. **Packaged but unsigned.** PyInstaller builds for Mac (.dmg/.zip) and Windows
+   (.zip) come out of the `Build Desktop App` GitHub Action. Code signing is
+   deliberately deferred — the client accepted the unsigned-app warning, which on
+   Windows means a SmartScreen "More info → Run anyway" click on first launch.
+4. **Playbook is empty until someone fills it in.** The wizard exists; the real
    people and offsets haven't been entered.
-6. Cosmetic: Asana members with hidden profiles show as "Private User" in the
+5. Cosmetic: Asana members with hidden profiles show as "Private User" in the
    assignee dropdowns and can't be told apart.
 
 ---
@@ -110,7 +109,7 @@ Worth knowing:
 
 - Hosting shape if this ever moves off the desktop — the engine is UI/OS-agnostic
   on purpose, and the Flask layer already doubles as a callable JSON API.
-- Whether name-based idempotency is good enough, or the manual flow should key on
-  something sturdier (the auto flow already uses envelope id).
+- Whether name-based idempotency is good enough, or builds should key on something
+  sturdier (a contract id parsed out of the PDF, say).
 - Partial-failure recovery: resume-in-place vs. delete-and-retry.
 - Token model for a client install: personal PAT vs. a dedicated service account.

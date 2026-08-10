@@ -16,21 +16,22 @@ Tracking work parked for later. Status of the built system is in README.md / CSM
   DEFAULTS only; Step 2 "per-section exceptions" was removed from it. `plan_from_dict()` +
   `build_from_plan()` in engine.py build the edited plan verbatim instead of re-parsing.
   *Note: `by_section` is still honoured by `csms/playbook.py` for hand-written playbooks,
-  since the CLI and DocuSign poll have no UI to edit in.*
+  since the CLI has no UI to edit in.*
 - [ ] CSMS still needs to actually fill in the wizard with their real assignee emails/offsets (or JB does it during onboarding) — building it doesn't populate it.
 - [ ] Live-test assignment + due dates against the board using a real Asana-member email (example.com addresses won't resolve).
 
-## DocuSign auto-trigger
-- [x] DocuSign JWT auth + REST working **live in the demo/sandbox** (`csms poll` runs clean).
-- [x] End-to-end test: pushed a sample contract through DocuSign demo, completed it, ran `csms poll` → real auto-build into Asana (2026-07-27, project https://app.asana.com/0/1216924620417515).
-- [ ] **Go-Live to production**: ~20 successful demo API calls, then promote the Integration Key; swap `.env` to production BASE_URI / OAUTH_HOST / Account ID / User ID.
-- [ ] (Optional) Set `DOCUSIGN_FOLDER_ID` to scope to the sponsorship folder.
-- [ ] Choose the trigger mechanism: scheduled poll (launchd/cron) vs Connect webhook. *Both call the same `poll_once()`.*
-- STATUS (2026-07-27): not scheduled anywhere (no launchd/cron installed) — CSMS chose the desktop-app route below instead, at least for now.
+## DocuSign auto-trigger — REMOVED (2026-08-10)
+The app no longer connects to DocuSign in any way. The scaffold that did
+(`csms/docusign.py`, `csms/poll.py`, `csms/state.py`, the `csms poll` command, the
+launchd template in `deploy/`, and the `DOCUSIGN_*` keys in `.env.example`) was
+deleted. Contracts are still *signed* in DocuSign — the user just exports the
+completed PDF and uploads it to the app themselves. Parsing is unchanged.
+
+If full automation is ever wanted again, it's recoverable from git history at
+commit `6fd1e79`.
 
 ## Client desktop app delivery (CSMS chose this route, 2026-07-27)
-CSMS wants their own copy of the desktop app, manual button-push only — no DocuSign
-auto-trigger. They've accepted the unsigned-app / "unidentified developer" warning risk
+CSMS wants their own copy of the desktop app, manual button-push only. They've accepted the unsigned-app / "unidentified developer" warning risk
 for now, so code-signing is NOT a blocker to ship. Need **both a Mac and a PC build**.
 - [x] First-run setup wizard (`csms/credentials.py` + `/setup` route in `csms/webapp.py`):
   client pastes their own Asana PAT, picks their workspace/team from their real Asana

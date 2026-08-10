@@ -9,9 +9,8 @@ Mapping: BuildPlan → one blank project, one Section per plan section, one Task
 plan task (notes carried into the task's notes field).
 
 TODO (idempotency): a re-run currently creates a fresh project. Phase 2.1 should
-key on the envelope id / project name (see csms.state) so re-processing the same
-contract updates rather than duplicates — the structural fix for the old
-"duplicate first task" bug.
+key on the project name so re-processing the same contract updates rather than
+duplicates — the structural fix for the old "duplicate first task" bug.
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """csms.engine — the core build_project() engine.
 
-One engine, many triggers: every trigger (upload app, folder-watch, DocuSign poll)
-calls build_project(). It parses a contract PDF into a BuildPlan and, unless this is
-a dry run, creates the Asana project from that plan.
+One engine, many front-ends: the desktop app, the web UI, and the CLI all call
+build_project(). It parses a contract PDF into a BuildPlan and, unless this is a
+dry run, creates the Asana project from that plan.
 
 Phase 1 ships the dry-run path (parse → plan → preview), which needs no credentials
 and works offline. Live Asana creation arrives in Phase 2 via an injected client.

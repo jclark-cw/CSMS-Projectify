@@ -2,8 +2,10 @@
 
 Self-owned replacement for the old Zapier flow. A completed sponsorship contract
 PDF is parsed locally into deliverable **sections** and **tasks**, which become an
-Asana project. One core engine, many triggers (upload app, folder-watch, DocuSign
-poll). See [CSMS_App_Plan.md](CSMS_App_Plan.md) for the full plan.
+Asana project. The signed contract PDF is supplied by the user — dragged into the
+app — so nothing here connects to DocuSign or any other e-signature service. One
+core engine, many front-ends (desktop app, web UI, CLI). See
+[CSMS_App_Plan.md](CSMS_App_Plan.md) for the full plan.
 
 ## Status
 
@@ -74,7 +76,7 @@ Drag a contract PDF onto the page → preview the sections/tasks/notes → click
 confirm step and editable project name). The file stays in the browser; each request
 uses a short-lived temp file that is deleted immediately — contracts are never persisted.
 JSON routes: `POST /api/preview` (dry-run) and `POST /api/build` (live) — multipart field
-`contract` — are the same engine in API form (the Zapier/DocuSign-callable endpoints).
+`contract` — are the same engine in API form.
 
 This one Flask codebase is intended to become the local click-install (via PyWebview),
 a single-tenant hosted URL, and the API — without an engine rewrite.

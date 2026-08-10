@@ -1,6 +1,6 @@
 """csms.config — central configuration / secrets access.
 
-Secrets (Asana PAT, DocuSign keys, …) come from the environment, optionally
+Secrets (the Asana PAT, …) come from the environment, optionally
 populated from a git-ignored .env file. This module is the ONLY place secrets
 are read. Rules:
   • Never hardcode secret values.

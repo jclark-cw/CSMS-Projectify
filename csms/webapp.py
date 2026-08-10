@@ -3,7 +3,7 @@
 
 One codebase, three futures: run locally (`python3 -m csms.webapp`), wrap with
 PyWebview into a desktop/click-install (`csms.desktop`), or deploy as a single-tenant
-hosted URL. The /api routes double as the Zapier/DocuSign-callable API.
+hosted URL. The /api routes expose the same engine for scripted callers.
 
 Flow: upload a contract PDF → preview the plan → optionally create it in Asana. The
 file stays in the browser (no re-upload needed); each request writes a short-lived
@@ -1002,7 +1002,7 @@ PLAYBOOK_PAGE = """<!doctype html>
 
     // by_section is intentionally empty from this wizard — per-contract exceptions
     // are made in the preview now. The engine still honours by_section if a
-    // hand-written playbook.yaml sets it (the CLI and DocuSign poll have no UI).
+    // hand-written playbook.yaml sets it (the CLI has no UI for it).
     return {
       default_sections: tasks.length ? [{name: 'Kickoff & Onboarding', tasks: tasks}] : [],
       assignees: {default: defaultAssignee || null, kickoff: kickoffAssignee || null,
