@@ -94,10 +94,13 @@ Worth knowing:
 2. **A build that fails partway leaves a partial project.** A re-run then sees the
    name and skips, silently leaving it incomplete; `--force` makes a full duplicate
    rather than resuming. No resume/repair path exists yet.
-3. **Packaged but unsigned.** PyInstaller builds for Mac (.dmg/.zip) and Windows
-   (.zip) come out of the `Build Desktop App` GitHub Action. Code signing is
-   deliberately deferred — the client accepted the unsigned-app warning, which on
-   Windows means a SmartScreen "More info → Run anyway" click on first launch.
+3. **Unsigned by decision, not by omission.** PyInstaller builds for Mac (.dmg/.zip)
+   and Windows (.zip) come out of the `Build Desktop App` GitHub Action. Code
+   signing was considered and declined (2026-08-10): the app is internal-only, so
+   paid certs aren't justified. Cost of that: macOS "unidentified developer"
+   (right-click → Open), Windows SmartScreen ("More info" → "Run anyway"), and
+   because SmartScreen keys on file hash, **every new build re-triggers it**. Not a
+   gap to close — revisit only if this is distributed outside the company.
 4. **Playbook is empty until someone fills it in.** The wizard exists; the real
    people and offsets haven't been entered.
 5. Cosmetic: Asana members with hidden profiles show as "Private User" in the

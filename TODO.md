@@ -31,8 +31,9 @@ If full automation is ever wanted again, it's recoverable from git history at
 commit `6fd1e79`.
 
 ## Client desktop app delivery (CSMS chose this route, 2026-07-27)
-CSMS wants their own copy of the desktop app, manual button-push only. They've accepted the unsigned-app / "unidentified developer" warning risk
-for now, so code-signing is NOT a blocker to ship. Need **both a Mac and a PC build**.
+CSMS wants their own copy of the desktop app, manual button-push only. Unsigned by
+decision (see the code-signing item below) — internal use only. Need **both a Mac and a
+PC build**; both now build in CI.
 - [x] First-run setup wizard (`csms/credentials.py` + `/setup` route in `csms/webapp.py`):
   client pastes their own Asana PAT, picks their workspace/team from their real Asana
   account, stored in the OS keychain via `keyring` — never in `.env`, never bundled.
@@ -44,11 +45,21 @@ for now, so code-signing is NOT a blocker to ship. Need **both a Mac and a PC bu
   `.github/workflows/build-desktop.yml` (macos-latest job). Validated locally in an
   isolated venv (not the dev environment) — frozen `.app` launches clean with no
   missing-module errors. Produces both a zipped `.app` and a `.dmg` as CI artifacts.
-- [ ] **PyInstaller freeze — PC build**: workflow file written (windows-latest job,
-  same launcher) but **not yet run/validated** — no Windows machine available this
-  session. First CI run on this repo is the real test; pywebview's Windows backend
-  (EdgeWebView2/pythonnet) may need extra hidden-import tweaks if PyInstaller misses
-  them. Installer wrapping (Inno Setup/NSIS) still TODO after the raw .exe works.
-- [ ] Clean-machine test both builds (no Python installed).
-- [ ] Code-signing: deferred/skipped per client's explicit go-ahead — revisit if it
-  becomes a problem for them (Apple Developer ID ~$99/yr, Windows Authenticode ~$100–400/yr).
+- [x] **PyInstaller freeze — PC build** (2026-08-10): builds green on windows-latest
+  from the shared `packaging/Projectify.spec`. The predicted hidden-import trouble was
+  real and is handled in the spec (pdfminer CMap data, pywebview JS assets + dynamic
+  backend, keyring's entry-point-scanned backend). `launcher.py --selftest` runs inside
+  the frozen bundle in CI and parses a sample contract, so a bad bundle fails the build
+  instead of the tester's machine. Zip wraps a `Projectify/` folder — the .exe does not
+  run apart from its `_internal/` sibling.
+- [ ] Clean-machine test both builds (no Python installed). **First PC tester build sent
+  2026-08-10**; waiting on their report. WebView2 runtime is the most likely first-run
+  snag — `packaging/README-windows.txt` covers it.
+- [ ] Installer wrapping (Inno Setup/NSIS). Optional — the zip works.
+- [x] **Code-signing: NOT doing it. Decided 2026-08-10 (JB).** The app is internal-only
+  apart from us developing it, so paid certs (Apple Developer ID ~$99/yr, Windows
+  Authenticode ~$100–400/yr) aren't justified. Consequences to live with, not bugs:
+  macOS shows "unidentified developer" (right-click → Open the first time), Windows shows
+  SmartScreen ("More info" → "Run anyway"). **SmartScreen keys on the file hash, so every
+  new build re-triggers it** — expect the warning on each drop, not just the first.
+  Revisit only if this is ever distributed outside the company.

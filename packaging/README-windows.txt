@@ -16,9 +16,13 @@ RUNNING IT
 
   2. Double-click Projectify.exe
 
-  3. Windows will show a blue "Windows protected your PC" box the first time.
-     This is expected: the app is not code-signed yet.
-     Click "More info", then "Run anyway".
+  3. Windows will show a blue "Windows protected your PC" box.
+     This is expected: the app is not code-signed, which is a deliberate choice
+     for an internal tool. Click "More info", then "Run anyway".
+
+     You'll see this again on every updated build we send you, not just the
+     first one -- Windows tracks the exact file, so a new version looks new to
+     it. Nothing is wrong.
 
   4. First launch asks for your Asana details. See SETUP below.
 
@@ -62,7 +66,8 @@ IF SOMETHING GOES WRONG
 
 
 KNOWN LIMITATIONS IN THIS TEST BUILD
-  - Not code-signed, hence the SmartScreen warning above.
+  - Not code-signed, hence the SmartScreen warning above. This is intentional and
+    won't change -- the app is internal-only.
   - If a build fails partway through, it can leave a partly-created project in
     Asana. Delete it in Asana before retrying.
   - Asana members with private profiles show up as "Private User" in the
