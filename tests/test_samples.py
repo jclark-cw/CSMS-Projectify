@@ -40,7 +40,40 @@ def test_samples_parse_to_expected_shape():
         assert all(e["tasks"] for e in data), f"{name}: has an empty section"
 
 
+def test_page_cap_rejects_before_parsing():
+    """A pathological file must fail fast rather than pin the CPU."""
+    from csms.parser import InvalidPDFError
+    try:
+        parse_contract(str(SAMPLES / "sample_acme_grouped.pdf"), max_pages=0)
+    except InvalidPDFError as e:
+        assert "too many pages" in str(e)
+    else:
+        raise AssertionError("page cap did not fire")
+
+
+def test_word_cap_rejects_text_bombs():
+    """Size and page count both pass on a small, densely-packed PDF; words catch it."""
+    from csms.parser import InvalidPDFError
+    try:
+        parse_contract(str(SAMPLES / "sample_acme_grouped.pdf"), max_words=1)
+    except InvalidPDFError as e:
+        assert "too much text" in str(e)
+    else:
+        raise AssertionError("word cap did not fire")
+
+
+def test_real_contracts_are_far_below_the_caps():
+    """The limits must never fire on legitimate input."""
+    for name in EXPECT:
+        path = SAMPLES / name
+        if path.exists():
+            assert parse_contract(str(path))
+
+
 if __name__ == "__main__":
     test_samples_present()
     test_samples_parse_to_expected_shape()
+    test_page_cap_rejects_before_parsing()
+    test_word_cap_rejects_text_bombs()
+    test_real_contracts_are_far_below_the_caps()
     print("samples OK")

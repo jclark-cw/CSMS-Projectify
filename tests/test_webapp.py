@@ -568,6 +568,57 @@ def test_api_build_desktop_applies_saved_playbook():
         assert captured["asana"] is not None
 
 
+def test_cross_origin_post_is_refused():
+    """A hostile page in the operator's browser must not be able to drive the app.
+
+    The local server has no auth by design, so this header check is the only thing
+    standing between a malicious tab and /api/setup/save overwriting the stored
+    Asana token.
+    """
+    c = _client()
+    for path in ("/api/setup/save", "/api/build", "/api/playbook/save",
+                 "/api/setup/clear"):
+        r = c.post(path, headers={"Origin": "https://evil.example"})
+        assert r.status_code == 403, f"{path} accepted a cross-origin POST"
+        assert b"cross-origin" in r.data
+
+
+def test_sandboxed_null_origin_is_refused():
+    """Origin: null (sandboxed iframe, file://) is hostile, not "absent"."""
+    r = _client().post("/api/build", headers={"Origin": "null"})
+    assert r.status_code == 403
+
+
+def test_dns_rebinding_host_is_refused():
+    """A rebound domain reaches loopback carrying its own Host header."""
+    r = _client().get("/", headers={"Host": "evil.example"})
+    assert r.status_code == 403
+    assert b"Host" in r.data
+
+
+def test_same_origin_requests_still_work():
+    """The guard must not break the app it protects."""
+    c = _client()
+    assert c.get("/", headers={"Host": "127.0.0.1:8000"}).status_code == 200
+    # Same-origin POSTs do send Origin; that path has to stay open.
+    r = c.post("/api/build",
+               headers={"Origin": "http://127.0.0.1:8000", "Host": "127.0.0.1:8000"})
+    assert r.status_code != 403
+
+
+def test_ipv6_loopback_origin_is_allowed():
+    """[::1]:port must not be mangled into a non-loopback host by port stripping."""
+    r = _client().get("/", headers={"Host": "[::1]:8000"})
+    assert r.status_code == 200
+
+
+def test_allowed_hosts_opt_in_for_real_hosting():
+    from csms.webapp import create_app
+    c = create_app(allowed_hosts={"127.0.0.1", "projectify.internal"}).test_client()
+    assert c.get("/", headers={"Host": "projectify.internal"}).status_code == 200
+    assert c.get("/", headers={"Host": "evil.example"}).status_code == 403
+
+
 def _run_standalone():
     if not _HAVE_FLASK:
         print("SKIP: Flask not installed")

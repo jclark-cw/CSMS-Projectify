@@ -226,7 +226,8 @@ def _item_has_task_children(classified: list, i: int) -> bool:
     return False
 
 
-def parse_contract(pdf_path: str) -> list:
+def parse_contract(pdf_path: str, max_pages: int = 100,
+                   max_words: int = 200_000) -> list:
     """
     Parse a sponsorship contract PDF and return structured deliverable data.
 
@@ -236,6 +237,12 @@ def parse_contract(pdf_path: str) -> list:
         "section": "Section Name (e.g. Booth and Expo Benefits)",
         "tasks":   [{"name": "Task 1", "notes": "..."}, ...],
       }
+
+    max_pages/max_words bound the work a single file can cause. validate_pdf's
+    size check is not enough on its own: a small, highly-compressed PDF can still
+    expand into an enormous word count and pin CPU here. Real contracts are a few
+    pages and a few thousand words, so these limits are far above legitimate input
+    and exist only to make a pathological file fail fast instead of hanging.
     """
     results = []
     current_group = None
@@ -263,9 +270,19 @@ def parse_contract(pdf_path: str) -> list:
         last_target = "name"
 
     with pdfplumber.open(pdf_path) as pdf:
+        if len(pdf.pages) > max_pages:
+            raise InvalidPDFError(
+                f"too many pages: {len(pdf.pages)} > {max_pages} limit")
         classified = []
+        word_count = 0
         for page in pdf.pages:
             words = page.extract_words(extra_attrs=["fontname", "size"])
+            # Checked per page, not per document: the point is to bail out partway
+            # through a pathological file, not to discover after parsing all of it.
+            word_count += len(words)
+            if word_count > max_words:
+                raise InvalidPDFError(
+                    f"too much text: over {max_words} words — not a contract")
             for line_words in _group_into_lines(words):
                 classified.append(_classify_line(line_words))
 

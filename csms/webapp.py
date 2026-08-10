@@ -28,6 +28,54 @@ from . import playbook_store
 
 MAX_MB = 25
 
+# Hostnames the local server will answer to. Anything else is either a DNS-rebinding
+# attempt or a genuine network deployment, and both should be refused by default.
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+
+
+def _hostname(value: str) -> str:
+    """Bare hostname from a Host header or an Origin URL — scheme, port, path stripped.
+
+    Handles IPv6 literals ("[::1]:8000" -> "::1"), which a naive rsplit(":") would
+    mangle into "[" and quietly fail open.
+    """
+    if not value:
+        return ""
+    v = value.strip()
+    if "://" in v:
+        v = v.split("://", 1)[1]
+    v = v.split("/", 1)[0]
+    if v.startswith("["):
+        return v[1:].split("]", 1)[0]
+    return v.rsplit(":", 1)[0] if ":" in v else v
+
+
+def _install_local_origin_guard(app: Flask, allowed_hosts) -> None:
+    """Refuse requests that didn't originate from the app's own loopback page.
+
+    The desktop app is a Flask server on 127.0.0.1 with no authentication — the
+    OS login is the gate. That leaves one vector reachable by an attacker with no
+    local access: a hostile page in the operator's ordinary browser can POST
+    cross-origin to that port and drive /api/build, or overwrite the stored Asana
+    token via /api/setup/save. pywebview 6.1 serves the WSGI app on a random
+    loopback port with no request token of its own, so nothing upstream stops this.
+
+    Two headers close it, and both are needed:
+      * Host  — a DNS-rebinding page resolves its own domain to 127.0.0.1, so the
+                request reaches us with an off-allowlist Host.
+      * Origin — an ordinary cross-origin POST carries the attacker's origin.
+                 Absent on same-origin navigations, so only checked when present;
+                 "null" (sandboxed iframe, file://) is treated as hostile.
+    """
+    @app.before_request
+    def _guard():  # noqa: ANN202
+        if _hostname(request.headers.get("Host", "")) not in allowed_hosts:
+            return jsonify(error="refused: unexpected Host header"), 403
+        origin = request.headers.get("Origin")
+        if origin and _hostname(origin) not in allowed_hosts:
+            return jsonify(error="refused: cross-origin request"), 403
+        return None
+
 
 def _build_from_upload(file, **kwargs):
     """Run the engine over an uploaded file via a short-lived temp file (deleted)."""
@@ -62,7 +110,7 @@ def _friendly_asana_error(exc, desktop: bool) -> str:
     return msg
 
 
-def create_app(desktop: bool = False) -> Flask:
+def create_app(desktop: bool = False, allowed_hosts=None) -> Flask:
     """Build the Flask app.
 
     desktop=True is used only by csms.desktop: it gates the first-run setup
@@ -70,8 +118,21 @@ def create_app(desktop: bool = False) -> Flask:
     csms.credentials) and makes /api/build use those stored credentials
     instead of .env. The hosted web app (desktop=False, the default) is
     unchanged — it keeps using AsanaClient.from_config() as before.
+
+    `allowed_hosts` is the Host/Origin allowlist (see _install_local_origin_guard).
+    It defaults to loopback only, which is correct for both shipped modes — the
+    desktop app and `python3 -m csms.webapp` both bind 127.0.0.1. Serving this on a
+    real network therefore fails closed with a 403 rather than silently exposing an
+    unauthenticated /api/build; set PROJECTIFY_ALLOWED_HOSTS (comma-separated) to
+    opt in deliberately.
     """
+    if allowed_hosts is None:
+        extra = os.environ.get("PROJECTIFY_ALLOWED_HOSTS", "")
+        allowed_hosts = set(LOOPBACK_HOSTS) | {
+            h.strip() for h in extra.split(",") if h.strip()
+        }
     app = Flask(__name__)
+    _install_local_origin_guard(app, frozenset(allowed_hosts))
     app.config["MAX_CONTENT_LENGTH"] = int(MAX_MB * 1024 * 1024)
     app.config["DESKTOP"] = desktop
     app.config["CRED_STORE"] = CredentialStore() if desktop else None
