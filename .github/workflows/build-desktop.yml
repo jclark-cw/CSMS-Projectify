@@ -82,9 +82,12 @@ jobs:
       - name: Stage the README next to the app
         run: copy packaging\README-windows.txt dist\Projectify\README.txt
 
+      # Archive the folder itself, not its contents: the exe will not run apart
+      # from its _internal/ sibling, and a flat zip invites a tester to drag out
+      # Projectify.exe on its own and get a broken app.
       - name: Zip the dist folder
         run: |
-          Compress-Archive -Path dist/Projectify/* -DestinationPath dist/Projectify-windows.zip
+          Compress-Archive -Path dist/Projectify -DestinationPath dist/Projectify-windows.zip
 
       - uses: actions/upload-artifact@v4
         with:
