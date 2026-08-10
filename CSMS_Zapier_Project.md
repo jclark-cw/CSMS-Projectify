@@ -96,7 +96,17 @@ Sends per deliverable (fires once per loop iteration):
 - `project_gid` — from Asana Create Project From Template step
 - `deliverable_label` — Loop current item
 
-**Zap 2 Webhook URL:** `https://hooks.zapier.com/hooks/catch/22623479/422plpi/`
+**Zap 2 Webhook URL:** *(redacted — see note below)*
+
+> **Redacted 2026-08-10.** A Zapier catch-hook URL is a bearer credential: anyone
+> holding it can POST into the Zap. This one sat in a public repo from the initial
+> commit (2026-07-30) until now, so it must be treated as compromised and rotated
+> or deleted in Zapier — removing it here does not un-publish it, since it remains
+> in this repo's git history.
+>
+> No replacement URL belongs in this file. This document is a historical record of
+> the Zapier flow that the Projectify app replaced; the app itself has no webhooks
+> and no Zapier dependency.
 
 ---
 
