@@ -260,6 +260,51 @@ def test_from_config_missing_creds_raises():
         cfg._ENV_LOADED = False
 
 
+def _raising(exc):
+    def _t(method, url, headers, body):
+        raise exc
+    return _t
+
+
+def test_setup_probe_names_tls_interception():
+    """A filtering proxy must be reported as such, not leaked as a URLError.
+
+    Uncaught, it becomes a Flask 500 whose HTML body the wizard fails to parse,
+    and the user is told "could not reach the server" -- i.e. blamed on their own
+    machine rather than the network that actually blocked them.
+    """
+    import ssl
+    import urllib.error
+    exc = urllib.error.URLError(
+        ssl.SSLCertVerificationError("certificate verify failed: unable to get local issuer certificate"))
+    try:
+        list_workspaces("tok", transport=_raising(exc))
+        assert False, "expected AsanaError"
+    except AsanaError as e:
+        assert "certificate" in str(e)
+        assert "VPN or network filter" in str(e)
+        assert "unable to get local issuer certificate" in str(e)
+        assert "(('" not in str(e), "SSLError args tuple leaked into user-facing text"
+
+
+def test_setup_probe_names_unreachable_host():
+    import urllib.error
+    try:
+        list_workspaces("tok", transport=_raising(urllib.error.URLError("timed out")))
+        assert False, "expected AsanaError"
+    except AsanaError as e:
+        assert "couldn't reach Asana" in str(e)
+        assert e.status is None, "network failures carry no HTTP status"
+
+
+def test_optional_lookups_degrade_on_network_failure():
+    """Teams/users are optional -- a dead network must not block the wizard."""
+    import urllib.error
+    boom = _raising(urllib.error.URLError("no route to host"))
+    assert list_teams("tok", "W1", transport=boom) == []
+    assert list_users("tok", "W1", transport=boom) == []
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

@@ -14,3 +14,11 @@ Flask==3.1.3
 
 # Playbook config (YAML). Optional at runtime — JSON playbooks need no extra dep.
 PyYAML>=6,<7
+
+# TLS trust for the Asana calls (csms.asana_client). The frozen app carries no
+# CA bundle, and OpenSSL's default paths read neither the macOS Keychain nor the
+# Windows certificate store -- so on a network with a filtering proxy the app
+# fails to verify a root the user's browser accepts. truststore delegates to the
+# OS store; certifi is the fallback when there is no OS store to delegate to.
+truststore==0.10.4
+certifi==2026.7.22

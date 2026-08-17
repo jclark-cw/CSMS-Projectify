@@ -17,11 +17,45 @@ from __future__ import annotations
 
 import json
 import socket
+import ssl
 import time
 import urllib.request
 import urllib.error
 
 API_BASE = "https://app.asana.com/api/1.0"
+
+_SSL_CONTEXT = None
+
+
+def _ssl_context():
+    """TLS context verifying against the OS trust store where possible.
+
+    The frozen app ships no CA bundle, and OpenSSL's compiled-in default paths
+    read neither the macOS Keychain nor the Windows certificate store. On a
+    managed network the only root signing app.asana.com may be a corporate CA
+    living in exactly those stores: the browser trusts it, Python does not, and
+    the call dies with a verification error that reads like an Asana outage.
+    truststore delegates to the OS, so we trust what the user's machine already
+    trusts; certifi covers a plain public-root network; stdlib is the floor.
+
+    Built once and cached -- the probe path is called per keystroke-ish, and
+    loading the system store is not free.
+    """
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is not None:
+        return _SSL_CONTEXT
+    try:
+        import truststore
+        _SSL_CONTEXT = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        return _SSL_CONTEXT
+    except Exception:
+        pass
+    try:
+        import certifi
+        _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        _SSL_CONTEXT = ssl.create_default_context()
+    return _SSL_CONTEXT
 
 
 class AsanaError(RuntimeError):
@@ -53,7 +87,7 @@ def _urllib_transport(method: str, url: str, headers: dict, body):
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:  # TLS verified by default
+        with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
     except urllib.error.HTTPError as e:
         try:
@@ -61,6 +95,33 @@ def _urllib_transport(method: str, url: str, headers: dict, body):
         except ValueError:
             payload = {}
         return e.code, payload
+
+
+def _probe(method: str, url: str, headers: dict, transport):
+    """Run a setup-time request, naming network failures instead of leaking them.
+
+    AsanaClient._request already retries and wraps these, but the module-level
+    probes below are called straight from the setup wizard's HTTP routes. A
+    URLError escaping there becomes a Flask 500, whose HTML body the browser
+    fails to parse as JSON -- and the wizard reports that as "could not reach
+    the server", pointing the user at their own machine rather than at the TLS
+    interception or firewall that actually stopped them. Naming the cause here
+    is what lets that message tell the truth.
+    """
+    try:
+        return transport(method, url, headers, None)
+    except (urllib.error.URLError, OSError, socket.timeout) as e:
+        reason = getattr(e, "reason", e)
+        if isinstance(reason, ssl.SSLError):
+            # ssl.SSLError stringifies to its args tuple -- noise in a message a
+            # non-technical user is supposed to act on.
+            detail = getattr(reason, "verify_message", None) or (
+                reason.args[-1] if reason.args else str(reason))
+            raise AsanaError(
+                f"couldn't verify Asana's certificate ({detail}). A VPN or "
+                "network filter is likely intercepting the connection."
+            ) from e
+        raise AsanaError(f"couldn't reach Asana ({reason}).") from e
 
 
 def list_workspaces(token: str, *, transport=None) -> list:
@@ -72,7 +133,7 @@ def list_workspaces(token: str, *, transport=None) -> list:
     """
     transport = transport or _urllib_transport
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    status, payload = transport("GET", API_BASE + "/workspaces?opt_fields=name", headers, None)
+    status, payload = _probe("GET", API_BASE + "/workspaces?opt_fields=name", headers, transport)
     if status >= 400:
         raise AsanaError(f"Asana GET /workspaces -> {status}: {payload}")
     return payload.get("data", payload)
@@ -88,7 +149,10 @@ def list_teams(token: str, workspace_gid: str, *, transport=None) -> list:
     transport = transport or _urllib_transport
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     path = f"/organizations/{workspace_gid}/teams?opt_fields=name"
-    status, payload = transport("GET", API_BASE + path, headers, None)
+    try:
+        status, payload = _probe("GET", API_BASE + path, headers, transport)
+    except AsanaError:
+        return []  # optional step; a dead network is already reported upstream
     if status >= 400:
         return []
     return payload.get("data", payload)
@@ -104,7 +168,10 @@ def list_users(token: str, workspace_gid: str, *, transport=None) -> list:
     transport = transport or _urllib_transport
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     path = f"/users?workspace={workspace_gid}&opt_fields=name,email&limit=100"
-    status, payload = transport("GET", API_BASE + path, headers, None)
+    try:
+        status, payload = _probe("GET", API_BASE + path, headers, transport)
+    except AsanaError:
+        return []  # pickers degrade to free text rather than blocking the wizard
     if status >= 400:
         return []
     return payload.get("data", payload)

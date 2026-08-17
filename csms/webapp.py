@@ -158,7 +158,10 @@ def create_app(desktop: bool = False, allowed_hosts=None) -> Flask:
         try:
             workspaces = list_workspaces(token)
         except AsanaError as e:
-            return jsonify(error=f"couldn't connect with that token: {e}"), 400
+            # A network/TLS failure carries no status; blaming the token there
+            # sends the user off regenerating a PAT that was never the problem.
+            msg = f"couldn't connect with that token: {e}" if e.status else str(e)
+            return jsonify(error=msg), 400
         return jsonify(workspaces=[{"gid": w["gid"], "name": w["name"]} for w in workspaces])
 
     @app.post("/api/setup/teams")
@@ -180,9 +183,16 @@ def create_app(desktop: bool = False, allowed_hosts=None) -> Flask:
         if not token or not workspace_gid:
             return jsonify(error="missing token or workspace_gid"), 400
         store = app.config["CRED_STORE"]
-        store.set_pat(token)
-        store.set_workspace_gid(workspace_gid)
-        store.set_team_gid(team_gid)
+        try:
+            store.set_pat(token)
+            store.set_workspace_gid(workspace_gid)
+            store.set_team_gid(team_gid)
+        except Exception as e:
+            # Denying (or dismissing) the OS keychain prompt raises here. Left
+            # uncaught it is a 500, and the wizard blames the local server.
+            return jsonify(error=(
+                f"couldn't save to your OS keychain ({e}). If a permission "
+                "prompt appeared and was dismissed, allow it and try again.")), 500
         return jsonify(ok=True)
 
     @app.post("/api/setup/clear")
@@ -609,7 +619,8 @@ PAGE = """<!doctype html>
     var fd = new FormData(); fd.append('contract', selectedFile);
     if (signedDate && signedDate.value) fd.append('signed_date', signedDate.value);
     fetch('/api/preview', {method:'POST', body:fd})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; },
+        function(){ return {ok:false, j:{error:'The app hit an unexpected error (HTTP '+r.status+').'}}; }); })
       .then(function(res){
         if (!res.ok || res.j.error){ results.innerHTML=''; showErr(res.j.error || 'Preview failed.'); return; }
         renderPlan(res.j); createPanel.classList.remove('hide'); outcome.innerHTML='';
@@ -736,7 +747,8 @@ PAGE = """<!doctype html>
     var edited = collectPlan();
     if (edited) fd.append('plan', JSON.stringify(edited));
     fetch('/api/build', {method:'POST', body:fd})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; },
+        function(){ return {ok:false, j:{error:'The app hit an unexpected error (HTTP '+r.status+').'}}; }); })
       .then(function(res){
         createBtn.disabled = false;
         if (!res.ok || res.j.error){
@@ -829,7 +841,8 @@ SETUP_PAGE = """<!doctype html>
     clearErr(); connectBtn.disabled = true; connectBtn.textContent = 'Connecting…';
     fetch('/api/setup/workspaces', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({token: token})})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; },
+        function(){ return {ok:false, j:{error:'The app hit an unexpected error (HTTP '+r.status+').'}}; }); })
       .then(function(res){
         connectBtn.disabled = false; connectBtn.textContent = 'Connect';
         if (!res.ok || res.j.error) { showErr(res.j.error || 'Could not connect.'); return; }
@@ -859,7 +872,8 @@ SETUP_PAGE = """<!doctype html>
     clearErr(); finishBtn.disabled = true; finishBtn.textContent = 'Saving…';
     fetch('/api/setup/save', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({token: tokenEl.value.trim(), workspace_gid: workspaceEl.value, team_gid: teamEl.value})})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; },
+        function(){ return {ok:false, j:{error:'The app hit an unexpected error (HTTP '+r.status+').'}}; }); })
       .then(function(res){
         if (!res.ok || res.j.error) { finishBtn.disabled = false; finishBtn.textContent = 'Finish setup';
           showErr(res.j.error || 'Could not save.'); return; }
@@ -1141,7 +1155,8 @@ PLAYBOOK_PAGE = """<!doctype html>
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     fetch('/api/playbook/save', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(collect())})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; },
+        function(){ return {ok:false, j:{error:'The app hit an unexpected error (HTTP '+r.status+').'}}; }); })
       .then(function(res){
         saveBtn.disabled = false; saveBtn.textContent = 'Save';
         if (!res.ok || res.j.error){ showErr(res.j.error || 'Could not save.'); return; }

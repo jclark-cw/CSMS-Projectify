@@ -46,6 +46,12 @@ for _pkg in ("pdfplumber", "pdfminer", "pypdfium2"):
 # Native window + its JS bridge assets.
 _bundle("webview")
 
+# TLS trust for the Asana calls. certifi's cacert.pem is a data file PyInstaller
+# will not pick up on its own, and truststore is imported lazily inside
+# csms.asana_client, so neither is reachable by static analysis.
+_bundle("certifi")
+hiddenimports += collect_submodules("truststore")
+
 # OS keychain backends (macOS Keychain / Windows Credential Manager).
 hiddenimports += collect_submodules("keyring.backends")
 
