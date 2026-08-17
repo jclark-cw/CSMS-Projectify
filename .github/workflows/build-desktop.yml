@@ -93,3 +93,30 @@ jobs:
         with:
           name: projectify-windows
           path: dist/Projectify-windows.zip
+
+  # Artifacts are login-walled and expire after 90 days, so they are no good for
+  # handing a build to someone. Release assets download anonymously, keep working,
+  # and surface in the repo sidebar -- which is where a tester actually looks.
+  release:
+    # Tags only. A manual dispatch is a test build and must not publish.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # the default token is read-only; creating a release needs this
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # gh is preinstalled on the runner -- no third-party action, in keeping
+      # with the rest of this workflow.
+      - name: Publish the binaries as release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Projectify $GITHUB_REF_NAME" \
+            --generate-notes \
+            artifacts/projectify-mac/* artifacts/projectify-windows/*
